@@ -1,43 +1,77 @@
 # Pulsebook
 
-Pulsebook is a compact real-time trading UI reference implementation. It focuses on frontend architecture for data-heavy realtime interfaces: orderbook updates, positions, PnL, mock stream events, connection lifecycle, stale-data handling, and performance-conscious rendering.
+Pulsebook is a compact real-time trading UI reference implementation focused on frontend architecture for data-heavy market interfaces.
 
-The project is intentionally small in product scope. The goal is to keep the architecture decisions visible, the UI compact and readable, and the file boundaries clear enough to use as a public reference.
+It demonstrates orderbook updates, positions, unrealized PnL, connection lifecycle handling, stale-data behavior, and performance-conscious rendering with mocked real-time events.
 
-## Current Status
+## Highlights
 
-The repository baseline is in place:
+- Live mock orderbook with snapshot and delta updates
+- Positions table with mark-price based unrealized PnL
+- PnL, exposure, last price, and spread summary metrics
+- Stream lifecycle states: connected, reconnecting, stale, disconnected
+- Reconnect and resync controls through a small stream operations panel
+- Separate Zustand stores for market state and UI-only state
+- Typed realtime events with `type`, `symbol`, `seq`, and `ts`
+- Narrow selectors and render isolation for frequent updates
 
-- Next.js App Router with TypeScript
-- Tailwind CSS v4-style PostCSS setup
-- Lightweight `app/layout.tsx` and `app/page.tsx`
-- Dedicated client boundary in `components/dashboard/pulsebook-dashboard.tsx`
-- Initial global styling and project metadata
+## Tech Stack
 
-## Planned Focus Areas
+- Next.js
+- React
+- TypeScript
+- Zustand
+- Tailwind CSS
 
-- Orderbook updates with snapshots and deltas
-- Positions and derived unrealized PnL
-- Typed mock realtime events with sequence handling
-- Connection lifecycle and stale-data behavior
-- Render isolation with narrow selectors
-
-## Local Development
+## Run Locally
 
 ```bash
 npm install
 npm run dev
 ```
 
-Then open `http://localhost:3000`.
+Open `http://localhost:3000`.
 
-## Repository Structure
+Quality checks:
+
+```bash
+npm run lint
+npm run typecheck
+npm run build
+```
+
+## Architecture Notes
+
+- The dashboard client boundary lives in `components/dashboard/pulsebook-dashboard.tsx`
+- Realtime stream logic lives outside React components in `lib/mock/realtime-engine.ts`
+- Market state and UI-only state are separated into different Zustand stores
+- Derived values such as spread, exposure, and unrealized PnL are computed through selectors and helpers instead of duplicated in store state
+
+## Folder Overview
 
 ```text
 app/
+  layout.tsx
+  page.tsx
 components/
+  dashboard/
+  shared/
 docs/
 lib/
+  mock/
+  selectors/
+  stores/
+  types/
+  utils/
 ```
 
-The implementation roadmap lives in [docs/implementation-roadmap.md](docs/implementation-roadmap.md).
+## Mocked Market Data
+
+Pulsebook uses mocked real-time market events and does not connect to real exchange APIs.
+
+## Documentation
+
+- [Architecture](docs/architecture.md)
+- [Realtime State](docs/realtime-state.md)
+- [Performance](docs/performance.md)
+- [Tradeoffs](docs/tradeoffs.md)
