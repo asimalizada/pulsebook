@@ -7,6 +7,9 @@ import type {
   PriceTickEvent,
 } from "@/lib/types/realtime";
 
+export const STREAM_TICK_INTERVAL_MS = 1200;
+export const ORDERBOOK_DEPTH = 6;
+
 export const PRIMARY_SYMBOL: TradingSymbol = "BTC-USD";
 
 export const INSTRUMENTS: Instrument[] = [
@@ -137,3 +140,15 @@ export const INITIAL_CONNECTION_EVENT: ConnectionStateEvent = {
     status: "connected",
   },
 };
+
+export function cloneOrderbookSnapshot(snapshot: OrderbookSnapshot): OrderbookSnapshot {
+  return {
+    symbol: snapshot.symbol,
+    bids: snapshot.bids.map((level) => ({ ...level })),
+    asks: snapshot.asks.map((level) => ({ ...level })),
+  };
+}
+
+export function clonePositions(positions: Position[]): Position[] {
+  return positions.map((position) => ({ ...position }));
+}

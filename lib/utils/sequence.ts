@@ -6,6 +6,10 @@ export function isNewerSequence(nextSeq: number, currentSeq: number | null) {
   return nextSeq > currentSeq;
 }
 
+export function nextSequence(currentSeq: number) {
+  return currentSeq + 1;
+}
+
 export function compareSequence(leftSeq: number, rightSeq: number) {
   if (leftSeq === rightSeq) {
     return 0;

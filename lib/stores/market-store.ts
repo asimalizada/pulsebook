@@ -7,10 +7,18 @@ import {
   INITIAL_PRICE_TICKS,
   INSTRUMENTS,
 } from "@/lib/mock/mock-data";
-import type { ConnectionStatus, Instrument, OrderbookSnapshot, PriceTick, TradingSymbol } from "@/lib/types/market";
+import type {
+  ConnectionStatus,
+  Instrument,
+  OrderbookLevel,
+  OrderbookSnapshot,
+  PriceTick,
+  TradingSymbol,
+} from "@/lib/types/market";
 import type { Position } from "@/lib/types/positions";
 import type {
   ConnectionStateEvent,
+  OrderbookDeltaEvent,
   OrderbookSnapshotEvent,
   PositionsSnapshotEvent,
   PriceTickEvent,
@@ -31,6 +39,7 @@ export interface MarketStoreState {
 
 export interface MarketStoreActions {
   applyOrderbookSnapshot: (event: OrderbookSnapshotEvent) => void;
+  applyOrderbookDelta: (event: OrderbookDeltaEvent) => void;
   applyPriceTick: (event: PriceTickEvent) => void;
   applyPositionsSnapshot: (event: PositionsSnapshotEvent) => void;
   updateConnectionState: (event: ConnectionStateEvent) => void;
@@ -65,6 +74,27 @@ function shouldApplyEvent(nextSeq: number, currentStreamSeq: number | null) {
   return isNewerSequence(nextSeq, currentStreamSeq);
 }
 
+function mergeOrderbookSide(
+  currentLevels: OrderbookLevel[],
+  updates: OrderbookLevel[],
+  sortDirection: "asc" | "desc",
+) {
+  const byPrice = new Map<number, OrderbookLevel>(currentLevels.map((level) => [level.price, { ...level }]));
+
+  for (const update of updates) {
+    if (update.size <= 0) {
+      byPrice.delete(update.price);
+      continue;
+    }
+
+    byPrice.set(update.price, { ...update });
+  }
+
+  return [...byPrice.values()].sort((left, right) =>
+    sortDirection === "desc" ? right.price - left.price : left.price - right.price,
+  );
+}
+
 export const useMarketStore = create<MarketStore>()((set) => ({
   ...initialState,
   applyOrderbookSnapshot: (event) =>
@@ -77,6 +107,35 @@ export const useMarketStore = create<MarketStore>()((set) => ({
         orderbooksBySymbol: {
           ...state.orderbooksBySymbol,
           [event.symbol]: event.payload,
+        },
+        lastMessageTimestamp: event.ts,
+        latestStreamSequence: event.seq,
+        isStale: false,
+      };
+    }),
+  applyOrderbookDelta: (event) =>
+    set((state) => {
+      if (!shouldApplyEvent(event.seq, state.latestStreamSequence)) {
+        return state;
+      }
+
+      const currentSnapshot = state.orderbooksBySymbol[event.symbol];
+
+      if (!currentSnapshot) {
+        return state;
+      }
+
+      const bidUpdates = event.payload.changes.filter((change) => change.side === "bid");
+      const askUpdates = event.payload.changes.filter((change) => change.side === "ask");
+
+      return {
+        orderbooksBySymbol: {
+          ...state.orderbooksBySymbol,
+          [event.symbol]: {
+            symbol: event.symbol,
+            bids: mergeOrderbookSide(currentSnapshot.bids, bidUpdates, "desc"),
+            asks: mergeOrderbookSide(currentSnapshot.asks, askUpdates, "asc"),
+          },
         },
         lastMessageTimestamp: event.ts,
         latestStreamSequence: event.seq,
