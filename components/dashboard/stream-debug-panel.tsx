@@ -1,22 +1,32 @@
 "use client";
 
+import type { LucideIcon } from "lucide-react";
+import { AlertTriangle, Clock3, Layers3, RefreshCw, ShieldCheck, TimerReset, WifiOff, Zap } from "lucide-react";
+
 import { Panel } from "@/components/shared/panel";
 import {
   getPulsebookRealtimeEngine,
-  startPulsebookRealtimeEngine,
-  stopPulsebookRealtimeEngine,
 } from "@/lib/mock/realtime-engine";
 import { formatTimestamp, getElapsedTimeMs } from "@/lib/utils/time";
 import { useLiveNow } from "@/lib/utils/use-live-now";
 import { useMarketStore } from "@/lib/stores/market-store";
+import { StatusPill } from "@/components/shared/status-pill";
 
-function StreamButton({ label, onClick }: { label: string; onClick: () => void }) {
+function StreamButton({ label, onClick, icon: Icon }: { label: string; onClick: () => void; icon: LucideIcon }) {
+  const toneClassName =
+    label === "Disconnect"
+      ? "border-rose-500/38 bg-rose-500/[0.06] text-rose-300 hover:border-rose-400/52 hover:bg-rose-500/[0.1]"
+      : label === "Reconnect"
+        ? "border-sky-500/34 bg-sky-500/[0.05] text-sky-300 hover:border-sky-400/48 hover:bg-sky-500/[0.09]"
+        : "border-amber-500/34 bg-amber-500/[0.05] text-amber-300 hover:border-amber-400/48 hover:bg-amber-500/[0.09]";
+
   return (
     <button
       type="button"
       onClick={onClick}
-      className="rounded-[14px] border border-[var(--border)] bg-white/[0.04] px-3 py-2 text-xs font-medium uppercase tracking-[0.14em] text-white transition-colors duration-200 hover:bg-white/[0.08]"
+      className={`flex min-h-[56px] items-center justify-center gap-2 rounded-[10px] border px-3 py-3 text-xs font-medium uppercase tracking-[0.14em] transition-colors duration-200 ${toneClassName}`}
     >
+      <Icon className="h-3.5 w-3.5" strokeWidth={1.9} />
       {label}
     </button>
   );
@@ -31,54 +41,71 @@ export function StreamDebugPanel() {
   const statusLabel = connectionStatus.replace(/^\w/, (value) => value.toUpperCase());
   const elapsedMs = now === null ? null : getElapsedTimeMs(lastMarketEventTimestamp, now);
   const lastUpdateAbsolute = lastMarketEventTimestamp === null ? "--" : formatTimestamp(lastMarketEventTimestamp);
+  const statusTone = connectionStatus === "connected" ? "positive" : connectionStatus === "reconnecting" ? "warning" : connectionStatus === "stale" ? "warning" : "danger";
+  const staleLabel = isStale ? "On" : "Off";
 
   return (
-    <Panel className="p-4">
-      <div className="mb-4 flex items-center justify-between">
-        <h2 className="text-sm font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">Stream Health</h2>
-        <span
-          className={`rounded-full border px-2.5 py-1 text-[0.68rem] font-medium ${
-            connectionStatus === "connected"
-              ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-200"
-              : connectionStatus === "reconnecting"
-                ? "border-amber-400/30 bg-amber-400/10 text-amber-200"
-                : connectionStatus === "stale"
-                  ? "border-orange-400/30 bg-orange-400/10 text-orange-200"
-                  : "border-rose-400/30 bg-rose-400/10 text-rose-200"
-          }`}
-        >
-          {statusLabel}
-        </span>
-      </div>
-
-      <div className="grid gap-2 md:grid-cols-2">
-        <div className="rounded-[16px] border border-[var(--border)] bg-white/[0.025] px-3 py-3">
-          <div className="text-[0.65rem] uppercase tracking-[0.16em] text-[var(--muted)]">Stale</div>
-          <div className="mt-1 pulsebook-mono text-sm font-medium text-white">{isStale ? "true" : "false"}</div>
+    <Panel roundedClassName="rounded-[10px]" variant="subtle" className="p-4 before:hidden">
+      <div className="mb-4 flex items-center justify-between border-b border-white/6 pb-3">
+        <div className="flex items-center gap-3">
+          <span className="rounded-[14px] border border-sky-400/14 bg-sky-400/8 p-2 text-sky-200">
+            <Zap className="h-4 w-4" strokeWidth={1.9} />
+          </span>
+          <h2 className="text-[0.76rem] font-semibold uppercase tracking-[0.22em] text-[var(--muted-strong)]">Stream Health</h2>
         </div>
-        <div className="rounded-[16px] border border-[var(--border)] bg-white/[0.025] px-3 py-3">
-          <div className="text-[0.65rem] uppercase tracking-[0.16em] text-[var(--muted)]">Sequence</div>
-          <div className="mt-1 pulsebook-mono text-sm font-medium text-white">
-            {String(latestStreamSequence ?? "--")}
-          </div>
-        </div>
-        <div className="rounded-[16px] border border-[var(--border)] bg-white/[0.025] px-3 py-3">
-          <div className="text-[0.65rem] uppercase tracking-[0.16em] text-[var(--muted)]">Last Market Update</div>
-          <div className="mt-1 pulsebook-mono text-sm font-medium text-white">{lastUpdateAbsolute}</div>
-        </div>
-        <div className="rounded-[16px] border border-[var(--border)] bg-white/[0.025] px-3 py-3">
-          <div className="text-[0.65rem] uppercase tracking-[0.16em] text-[var(--muted)]">Elapsed</div>
-          <div className="mt-1 pulsebook-mono text-sm font-medium text-white">
-            {elapsedMs === null ? "--" : `${elapsedMs}ms`}
-          </div>
+        <div className="flex items-center">
+          <StatusPill tone={statusTone}>{statusLabel}</StatusPill>
         </div>
       </div>
 
-      <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-        <StreamButton label="Disconnect" onClick={() => getPulsebookRealtimeEngine().simulateDisconnect()} />
-        <StreamButton label="Reconnect" onClick={() => getPulsebookRealtimeEngine().reconnect()} />
-        <StreamButton label="Force Stale" onClick={() => getPulsebookRealtimeEngine().forceStale()} />
-        <StreamButton label="Restart" onClick={() => { stopPulsebookRealtimeEngine(); startPulsebookRealtimeEngine(); }} />
+      <div className="grid gap-3 min-[420px]:grid-cols-2 xl:grid-cols-[0.9fr_0.85fr_1.35fr_0.9fr]">
+        <div className="rounded-[10px] border border-[var(--border)] bg-white/[0.02] px-4 py-4 text-center">
+          <div className="pulsebook-label text-center">Stale</div>
+          <div className="mt-3 border-t border-white/7 pt-3">
+            <div className="flex items-center justify-center gap-3 pulsebook-mono text-[0.88rem] font-medium text-white">
+              <ShieldCheck className={`h-5 w-5 ${isStale ? "text-amber-300" : "text-emerald-300"}`} strokeWidth={1.9} />
+              {staleLabel}
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-[10px] border border-[var(--border)] bg-white/[0.02] px-4 py-4 text-center">
+          <div className="pulsebook-label text-center">Sequence</div>
+          <div className="mt-3 border-t border-white/7 pt-3">
+            <div className="flex items-center justify-center gap-3 pulsebook-mono text-[0.88rem] font-medium text-white">
+              <Layers3 className="h-5 w-5 text-sky-300" strokeWidth={1.9} />
+              {String(latestStreamSequence ?? "--")}
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-[10px] border border-[var(--border)] bg-white/[0.02] px-4 py-4 text-center">
+          <div className="pulsebook-label text-center">Last Market Update</div>
+          <div className="mt-3 border-t border-white/7 pt-3">
+            <div className="flex items-center justify-center gap-3 pulsebook-mono text-[0.88rem] font-medium text-white">
+              <Clock3 className="h-5 w-5 text-cyan-300" strokeWidth={1.9} />
+              {lastUpdateAbsolute}
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-[10px] border border-[var(--border)] bg-white/[0.02] px-4 py-4 text-center">
+          <div className="pulsebook-label text-center">Elapsed</div>
+          <div className="mt-3 border-t border-white/7 pt-3">
+            <div className="flex items-center justify-center gap-3 pulsebook-mono text-[0.88rem] font-medium text-white">
+              <TimerReset className="h-5 w-5 text-violet-300" strokeWidth={1.9} />
+              {elapsedMs === null ? "--" : `${elapsedMs}ms`}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-4 border-t border-white/6 pt-4">
+        <div className="grid gap-3 min-[420px]:grid-cols-2 xl:grid-cols-3">
+        <StreamButton label="Disconnect" icon={WifiOff} onClick={() => getPulsebookRealtimeEngine().simulateDisconnect()} />
+        <StreamButton label="Reconnect" icon={RefreshCw} onClick={() => getPulsebookRealtimeEngine().reconnect()} />
+        <StreamButton label="Force Stale" icon={AlertTriangle} onClick={() => getPulsebookRealtimeEngine().forceStale()} />
+        </div>
       </div>
     </Panel>
   );

@@ -1,17 +1,22 @@
 "use client";
 
-import { useMarketStore } from "@/lib/stores/market-store";
+import { Activity, AlertTriangle, RefreshCw, WifiOff } from "lucide-react";
 
-const statusToneMap = {
-  connected: "border-emerald-400/30 bg-emerald-400/10 text-emerald-200",
-  reconnecting: "border-amber-400/30 bg-amber-400/10 text-amber-200",
-  stale: "border-orange-400/30 bg-orange-400/10 text-orange-200",
-  disconnected: "border-rose-400/30 bg-rose-400/10 text-rose-200",
-} as const;
+import { useMarketStore } from "@/lib/stores/market-store";
+import { StatusPill } from "@/components/shared/status-pill";
 
 export function ConnectionStatus() {
   const status = useMarketStore((state) => state.connectionStatus);
   const statusLabel = status.replace(/^\w/, (value) => value.toUpperCase());
+  const Icon =
+    status === "connected"
+      ? Activity
+      : status === "reconnecting"
+        ? RefreshCw
+        : status === "stale"
+          ? AlertTriangle
+          : WifiOff;
+  const tone = status === "connected" ? "positive" : status === "reconnecting" ? "warning" : status === "stale" ? "warning" : "danger";
 
   return (
     <div className="flex items-center gap-3">
@@ -33,9 +38,12 @@ export function ConnectionStatus() {
           }`}
         />
       </span>
-      <div className={`rounded-full border px-2.5 py-1 text-[0.68rem] font-medium ${statusToneMap[status]}`}>
-        {statusLabel}
-      </div>
+      <StatusPill tone={tone}>
+        <span className="flex items-center gap-1.5">
+          <Icon className={`h-3.5 w-3.5 ${status === "reconnecting" ? "animate-spin" : ""}`} strokeWidth={2} />
+          {statusLabel}
+        </span>
+      </StatusPill>
     </div>
   );
 }

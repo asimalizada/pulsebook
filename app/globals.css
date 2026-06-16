@@ -1,19 +1,25 @@
 @import "tailwindcss";
 
 :root {
-  --bg: #07111f;
-  --bg-elevated: rgba(12, 26, 45, 0.8);
-  --bg-panel: rgba(9, 20, 36, 0.86);
-  --bg-panel-strong: rgba(7, 16, 29, 0.94);
-  --border: rgba(135, 164, 206, 0.18);
-  --border-strong: rgba(135, 164, 206, 0.3);
+  --bg: #050914;
+  --bg-deep: #03070f;
+  --bg-shell: rgba(4, 9, 18, 0.94);
+  --bg-elevated: rgba(10, 19, 34, 0.86);
+  --bg-panel: rgba(8, 17, 31, 0.84);
+  --bg-panel-strong: rgba(5, 11, 22, 0.96);
+  --bg-command: rgba(4, 10, 21, 0.96);
+  --border: rgba(129, 154, 194, 0.14);
+  --border-strong: rgba(129, 154, 194, 0.28);
   --fg: #edf4ff;
-  --muted: #92a8c7;
-  --accent: #68d4b1;
-  --accent-soft: rgba(104, 212, 177, 0.12);
+  --muted: #8197b8;
+  --muted-strong: #b1c3dd;
+  --accent: #5de0bc;
+  --accent-cool: #5cc4ff;
+  --accent-soft: rgba(93, 224, 188, 0.12);
   --danger: #ff7a88;
-  --warning: #f5be66;
-  --shadow: 0 24px 80px rgba(0, 0, 0, 0.32);
+  --warning: #f3bc63;
+  --shadow: 0 24px 70px rgba(0, 0, 0, 0.36);
+  --glow: 0 0 0 1px rgba(92, 196, 255, 0.08), 0 16px 40px rgba(0, 0, 0, 0.3);
 }
 
 * {
@@ -22,16 +28,58 @@
 
 html {
   background:
-    radial-gradient(circle at top left, rgba(64, 144, 255, 0.22), transparent 28%),
-    radial-gradient(circle at top right, rgba(104, 212, 177, 0.12), transparent 24%),
-    linear-gradient(180deg, #091321 0%, #07111f 58%, #060d19 100%);
+    radial-gradient(circle at top left, rgba(37, 109, 255, 0.18), transparent 24%),
+    radial-gradient(circle at 82% 0%, rgba(28, 211, 164, 0.11), transparent 18%),
+    radial-gradient(circle at 50% 100%, rgba(28, 56, 112, 0.15), transparent 30%),
+    linear-gradient(180deg, #07101d 0%, #050914 52%, #03070f 100%);
   color-scheme: dark;
+  scrollbar-color: rgba(129, 154, 194, 0.46) rgba(7, 15, 28, 0.92);
+  scrollbar-width: thin;
 }
 
 body {
   margin: 0;
   min-height: 100vh;
   font-family: var(--font-sans), sans-serif;
+  color: var(--fg);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.015), transparent 18%),
+    radial-gradient(circle at 20% 0%, rgba(92, 196, 255, 0.06), transparent 26%);
+}
+
+html::-webkit-scrollbar,
+body::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+html::-webkit-scrollbar-track,
+body::-webkit-scrollbar-track {
+  background:
+    linear-gradient(180deg, rgba(6, 13, 25, 0.96) 0%, rgba(4, 10, 19, 0.98) 100%);
+  border-left: 1px solid rgba(129, 154, 194, 0.08);
+}
+
+html::-webkit-scrollbar-thumb,
+body::-webkit-scrollbar-thumb {
+  border: 2px solid rgba(4, 10, 19, 0.92);
+  border-radius: 999px;
+  background:
+    linear-gradient(180deg, rgba(129, 154, 194, 0.52) 0%, rgba(92, 196, 255, 0.38) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 0 0 1px rgba(92, 196, 255, 0.08);
+}
+
+html::-webkit-scrollbar-thumb:hover,
+body::-webkit-scrollbar-thumb:hover {
+  background:
+    linear-gradient(180deg, rgba(149, 174, 214, 0.68) 0%, rgba(92, 196, 255, 0.52) 100%);
+}
+
+html::-webkit-scrollbar-corner,
+body::-webkit-scrollbar-corner {
+  background: rgba(4, 10, 19, 0.98);
 }
 
 a {
@@ -52,21 +100,70 @@ textarea {
 
 .pulsebook-shell {
   min-height: 100vh;
-  padding: 32px 20px 56px;
+  padding: 18px 14px 28px;
 }
 
 .pulsebook-grid {
   margin: 0 auto;
   display: grid;
-  max-width: 1240px;
-  gap: 20px;
+  max-width: 1420px;
+  gap: 12px;
 }
 
 .pulsebook-panel {
   border: 1px solid var(--border);
-  background: linear-gradient(180deg, var(--bg-panel) 0%, var(--bg-panel-strong) 100%);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.018), transparent 22%),
+    linear-gradient(180deg, var(--bg-panel) 0%, var(--bg-panel-strong) 100%);
   box-shadow: var(--shadow);
   backdrop-filter: blur(14px);
+  position: relative;
+  overflow: hidden;
+  transition:
+    transform 180ms ease,
+    border-color 180ms ease,
+    background-color 180ms ease,
+    box-shadow 180ms ease;
+}
+
+.pulsebook-panel::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.028), transparent 24%),
+    radial-gradient(circle at top right, rgba(92, 196, 255, 0.06), transparent 24%);
+}
+
+.pulsebook-panel:hover {
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow), var(--glow);
+}
+
+.pulsebook-command {
+  border: 1px solid rgba(113, 151, 204, 0.18);
+  background:
+    radial-gradient(circle at left center, rgba(92, 196, 255, 0.08), transparent 22%),
+    linear-gradient(180deg, rgba(22, 39, 63, 0.08), transparent 34%),
+    linear-gradient(180deg, rgba(6, 16, 29, 0.98) 0%, rgba(4, 10, 20, 0.98) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 24px 60px rgba(0, 0, 0, 0.36);
+}
+
+.pulsebook-terminal {
+  background:
+    radial-gradient(circle at top left, rgba(18, 108, 255, 0.08), transparent 20%),
+    linear-gradient(180deg, rgba(12, 31, 53, 0.18) 0%, transparent 24%),
+    linear-gradient(180deg, rgba(7, 18, 33, 0.95) 0%, rgba(5, 12, 23, 0.98) 100%);
+}
+
+.pulsebook-terminal-grid {
+  background-image:
+    linear-gradient(rgba(125, 153, 189, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(125, 153, 189, 0.04) 1px, transparent 1px);
+  background-size: 100% 28px, 28px 100%;
 }
 
 .pulsebook-panel button {
@@ -91,10 +188,168 @@ textarea {
 
 .pulsebook-mono {
   font-family: var(--font-mono), monospace;
+  font-variant-numeric: tabular-nums slashed-zero;
+}
+
+.pulsebook-label {
+  font-size: 0.64rem;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.pulsebook-header-chip {
+  border: 1px solid rgba(117, 144, 186, 0.2);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.02)),
+    linear-gradient(90deg, rgba(92, 196, 255, 0.035), transparent 70%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.pulsebook-table-row {
+  position: relative;
+  overflow: hidden;
+}
+
+.pulsebook-table-row::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 180ms ease;
+}
+
+.pulsebook-table-row:hover::before {
+  opacity: 1;
+}
+
+.pulsebook-market-strip {
+  position: relative;
+  border: 1px solid rgba(117, 144, 186, 0.18);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.032), rgba(255, 255, 255, 0.012)),
+    rgba(7, 16, 29, 0.82);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+
+.pulsebook-market-strip::after {
+  content: "";
+  position: absolute;
+  inset: auto 12px 0 12px;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(92, 196, 255, 0.05), rgba(92, 196, 255, 0.3), rgba(92, 196, 255, 0.05));
+}
+
+.pulsebook-depth-bid,
+.pulsebook-depth-ask {
+  position: absolute;
+  inset-block: 4px;
+  border-radius: 8px;
+  pointer-events: none;
+  transition: width 220ms ease, opacity 220ms ease;
+}
+
+.pulsebook-depth-bid {
+  left: 4px;
+  background: linear-gradient(90deg, rgba(93, 224, 188, 0.18), rgba(93, 224, 188, 0.04));
+}
+
+.pulsebook-depth-ask {
+  right: 4px;
+  background: linear-gradient(270deg, rgba(255, 122, 136, 0.18), rgba(255, 122, 136, 0.04));
+}
+
+.pulsebook-positive-glow {
+  text-shadow: 0 0 14px rgba(93, 224, 188, 0.14);
+}
+
+.pulsebook-negative-glow {
+  text-shadow: 0 0 14px rgba(255, 122, 136, 0.14);
+}
+
+.pulsebook-button-soft {
+  border: 1px solid rgba(117, 144, 186, 0.18);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.015)),
+    rgba(7, 15, 28, 0.84);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  transition:
+    border-color 180ms ease,
+    background-color 180ms ease,
+    transform 180ms ease,
+    color 180ms ease;
+}
+
+.pulsebook-button-soft:hover {
+  border-color: rgba(117, 144, 186, 0.32);
+  background-color: rgba(255, 255, 255, 0.06);
+  transform: translateY(-1px);
+}
+
+.pulsebook-scroll-shadow {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.03),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.03);
+}
+
+.pulsebook-scrollbar {
+  scrollbar-color: rgba(129, 154, 194, 0.42) rgba(7, 15, 28, 0.86);
+  scrollbar-width: thin;
+}
+
+.pulsebook-scrollbar::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.pulsebook-scrollbar::-webkit-scrollbar-track {
+  background: rgba(5, 11, 21, 0.86);
+}
+
+.pulsebook-scrollbar::-webkit-scrollbar-thumb {
+  border: 2px solid rgba(5, 11, 21, 0.92);
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(129, 154, 194, 0.42), rgba(92, 196, 255, 0.3));
+}
+
+.pulsebook-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, rgba(149, 174, 214, 0.58), rgba(92, 196, 255, 0.42));
+}
+
+.pulsebook-book-divider {
+  position: absolute;
+  inset: 72px 50% 128px auto;
+  width: 1px;
+  background: linear-gradient(180deg, rgba(114, 145, 189, 0.04), rgba(114, 145, 189, 0.3), rgba(114, 145, 189, 0.04));
+  transform: translateX(0.5px);
+}
+
+.pulsebook-book-divider::after {
+  content: "";
+  position: absolute;
+  top: 44%;
+  left: 50%;
+  width: 8px;
+  height: 8px;
+  border: 1px solid rgba(255, 185, 208, 0.78);
+  background: rgba(15, 23, 39, 0.96);
+  transform: translate(-50%, -50%) rotate(45deg);
+  box-shadow: 0 0 14px rgba(255, 130, 149, 0.18);
+}
+
+.pulsebook-book-crosshair {
+  position: absolute;
+  top: 44%;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(76, 224, 179, 0.04), rgba(122, 159, 213, 0.22), rgba(255, 133, 152, 0.16));
 }
 
 @media (min-width: 768px) {
   .pulsebook-shell {
-    padding: 40px 28px 72px;
+    padding: 20px 18px 32px;
   }
 }
