@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { useUiStore } from "@/lib/stores/ui-store";
 
 import { DashboardHeader } from "@/components/dashboard/dashboard-header";
 import { OrderbookPanel } from "@/components/dashboard/orderbook-panel";
@@ -10,6 +11,9 @@ import { StreamDebugPanel } from "@/components/dashboard/stream-debug-panel";
 import { startPulsebookRealtimeEngine, stopPulsebookRealtimeEngine } from "@/lib/mock/realtime-engine";
 
 export function PulsebookDashboard() {
+  const isDebugPanelVisible = useUiStore((state) => state.isDebugPanelVisible);
+  const density = useUiStore((state) => state.density);
+
   useEffect(() => {
     startPulsebookRealtimeEngine();
 
@@ -18,17 +22,19 @@ export function PulsebookDashboard() {
     };
   }, []);
 
+  const gapClass = density === "comfortable" ? "gap-5" : "gap-4";
+
   return (
     <main className="pulsebook-shell">
-      <div className="pulsebook-grid gap-4">
+      <div className={`pulsebook-grid ${gapClass}`}>
         <DashboardHeader />
         <PnlSummary />
 
-        <section className="grid gap-4 xl:grid-cols-[1.15fr_0.85fr]">
+        <section className={`grid ${gapClass} xl:grid-cols-[1.15fr_0.85fr]`}>
           <OrderbookPanel />
-          <div className="grid gap-4">
+          <div className={`grid ${gapClass}`}>
             <PositionsTable />
-            <StreamDebugPanel />
+            {isDebugPanelVisible && <StreamDebugPanel />}
           </div>
         </section>
       </div>

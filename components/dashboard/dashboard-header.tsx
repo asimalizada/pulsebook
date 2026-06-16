@@ -1,10 +1,11 @@
 "use client";
 
-import { useMemo } from "react";
-import { Activity, Radio } from "lucide-react";
+import { useCallback, useMemo } from "react";
+import { Activity, Eye, EyeOff, Radio, Rows2, Rows3 } from "lucide-react";
 import { useShallow } from "zustand/react/shallow";
 
 import { Panel } from "@/components/shared/panel";
+import { ConnectionStatus } from "@/components/dashboard/connection-status";
 import { formatRelativeUpdateTime, formatTimestamp } from "@/lib/utils/time";
 import { useLiveNow } from "@/lib/utils/use-live-now";
 import { useMarketStore } from "@/lib/stores/market-store";
@@ -19,21 +20,53 @@ function HeaderFact({ label, value }: { label: string; value: string }) {
   );
 }
 
+function HeaderIconButton({
+  onClick,
+  title,
+  isActive,
+  children,
+}: {
+  onClick: () => void;
+  title: string;
+  isActive?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={title}
+      className={`flex h-7 w-7 items-center justify-center rounded-[7px] border transition-colors duration-200 ${
+        isActive
+          ? "border-sky-400/28 bg-sky-400/[0.08] text-sky-300 hover:border-sky-400/40 hover:bg-sky-400/[0.12]"
+          : "border-white/8 bg-white/[0.03] text-[var(--muted-strong)] hover:border-white/14 hover:bg-white/[0.06] hover:text-white"
+      }`}
+    >
+      {children}
+    </button>
+  );
+}
+
 export function DashboardHeader() {
   const selectedSymbol = useUiStore((state) => state.selectedSymbol);
-  const [connectionStatus, latestStreamSequence, lastMarketEventTimestamp] = useMarketStore(
-    useShallow((state) => [state.connectionStatus, state.latestStreamSequence, state.lastMarketEventTimestamp]),
+  const [density, isDebugPanelVisible, setDensity, toggleDebugPanel] = useUiStore(
+    useShallow((state) => [state.density, state.isDebugPanelVisible, state.setDensity, state.toggleDebugPanel]),
+  );
+  const [latestStreamSequence, lastMarketEventTimestamp] = useMarketStore(
+    useShallow((state) => [state.latestStreamSequence, state.lastMarketEventTimestamp]),
   );
   const now = useLiveNow(1000);
   const lastUpdateAbsolute = useMemo(() => {
     return lastMarketEventTimestamp === null ? "--" : formatTimestamp(lastMarketEventTimestamp);
   }, [lastMarketEventTimestamp]);
   const lastUpdateRelative = useMemo(() => {
-    return now === null || lastMarketEventTimestamp === null ? "--" : formatRelativeUpdateTime(lastMarketEventTimestamp, now);
+    return now === null || lastMarketEventTimestamp === null
+      ? "--"
+      : formatRelativeUpdateTime(lastMarketEventTimestamp, now);
   }, [lastMarketEventTimestamp, now]);
-  const statusLabel = useMemo(() => {
-    return connectionStatus.replace(/^\w/, (value) => value.toUpperCase());
-  }, [connectionStatus]);
+  const handleToggleDensity = useCallback(() => {
+    setDensity(density === "compact" ? "comfortable" : "compact");
+  }, [density, setDensity]);
 
   return (
     <Panel variant="command" roundedClassName="rounded-[12px]" className="px-4 py-3 before:hidden md:px-5">
@@ -62,20 +95,41 @@ export function DashboardHeader() {
           </div>
 
           <div className="hidden items-center px-5 xl:flex">
-            <span className="inline-flex items-center gap-2 rounded-full border border-emerald-400/24 bg-emerald-400/10 px-4 py-1.5 text-[0.82rem] font-medium text-emerald-200 shadow-[0_0_18px_rgba(52,211,153,0.08)]">
-              <span className="relative inline-flex h-2.5 w-2.5">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-300/35" />
-                <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-300" />
-              </span>
-              {statusLabel}
-            </span>
+            <ConnectionStatus />
           </div>
         </div>
 
-        <div className="grid grid-cols-3 gap-0 border-t border-white/6 pt-3 xl:min-w-[400px] xl:grid-cols-3 xl:border-t-0 xl:pt-0">
-          <HeaderFact label="Last Update" value={lastUpdateAbsolute} />
-          <HeaderFact label="Relative" value={lastUpdateRelative} />
-          <HeaderFact label="Sequence" value={String(latestStreamSequence ?? "--")} />
+        <div className="flex items-center justify-between gap-4 border-t border-white/6 pt-3 xl:border-t-0 xl:pt-0">
+          <div className="flex items-center gap-1.5">
+            <HeaderIconButton
+              onClick={handleToggleDensity}
+              title={density === "compact" ? "Switch to comfortable view" : "Switch to compact view"}
+              isActive={density === "comfortable"}
+            >
+              {density === "compact" ? (
+                <Rows3 className="h-3.5 w-3.5" strokeWidth={1.8} />
+              ) : (
+                <Rows2 className="h-3.5 w-3.5" strokeWidth={1.8} />
+              )}
+            </HeaderIconButton>
+            <HeaderIconButton
+              onClick={toggleDebugPanel}
+              title={isDebugPanelVisible ? "Hide stream panel" : "Show stream panel"}
+              isActive={isDebugPanelVisible}
+            >
+              {isDebugPanelVisible ? (
+                <EyeOff className="h-3.5 w-3.5" strokeWidth={1.8} />
+              ) : (
+                <Eye className="h-3.5 w-3.5" strokeWidth={1.8} />
+              )}
+            </HeaderIconButton>
+          </div>
+
+          <div className="grid grid-cols-3 gap-0 xl:min-w-[400px]">
+            <HeaderFact label="Last Update" value={lastUpdateAbsolute} />
+            <HeaderFact label="Relative" value={lastUpdateRelative} />
+            <HeaderFact label="Sequence" value={String(latestStreamSequence ?? "--")} />
+          </div>
         </div>
       </div>
     </Panel>

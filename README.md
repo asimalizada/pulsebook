@@ -32,7 +32,17 @@ npm run dev
 
 Open `http://localhost:3000`.
 
-Quality checks:
+## Try This
+
+The stream debug panel in the bottom right exposes the connection lifecycle directly:
+
+1. **Force Stale** — pauses market events; watch the stream status turn amber and elapsed time climb
+2. **Disconnect** — emits a disconnected event; the status indicator and header update immediately
+3. **Reconnect** — triggers reconnecting → connected transition; a fresh snapshot is re-emitted and the sequence resets
+4. Use the **eye icon** in the header to hide or show the stream panel
+5. Use the **rows icon** in the header to toggle between compact and comfortable density
+
+Production checks:
 
 ```bash
 npm run lint
