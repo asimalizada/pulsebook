@@ -8,6 +8,9 @@ import type {
 } from "@/lib/types/realtime";
 
 export const STREAM_TICK_INTERVAL_MS = 1200;
+export const STREAM_HEALTH_CHECK_INTERVAL_MS = 500;
+export const STREAM_STALE_AFTER_MS = 4000;
+export const STREAM_RECONNECT_DELAY_MS = 1500;
 export const ORDERBOOK_DEPTH = 6;
 
 export const PRIMARY_SYMBOL: TradingSymbol = "BTC-USD";

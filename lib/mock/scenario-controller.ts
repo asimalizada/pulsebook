@@ -22,9 +22,15 @@ export interface MarketScenarioStep {
 }
 
 export interface ScenarioController {
+  start(): void;
+  stop(): void;
   reset(): void;
   getBootstrapState(): BootstrapScenarioState;
-  nextStep(): MarketScenarioStep;
+  nextStep(): MarketScenarioStep | null;
+  simulateDisconnect(): void;
+  reconnect(): void;
+  forceStale(): void;
+  canEmitMarketEvents(): boolean;
 }
 
 function roundPrice(value: number) {
@@ -39,6 +45,19 @@ class DefaultScenarioController implements ScenarioController {
   private snapshot = cloneOrderbookSnapshot(INITIAL_ORDERBOOK);
   private priceTick = { ...INITIAL_PRICE_TICKS[PRIMARY_SYMBOL] };
   private stepCount = 0;
+  private streamAvailable = false;
+  private marketUpdatesPaused = false;
+
+  start() {
+    this.streamAvailable = true;
+    this.marketUpdatesPaused = false;
+    this.reset();
+  }
+
+  stop() {
+    this.streamAvailable = false;
+    this.marketUpdatesPaused = false;
+  }
 
   reset() {
     this.snapshot = cloneOrderbookSnapshot(INITIAL_ORDERBOOK);
@@ -54,7 +73,11 @@ class DefaultScenarioController implements ScenarioController {
     };
   }
 
-  nextStep(): MarketScenarioStep {
+  nextStep(): MarketScenarioStep | null {
+    if (!this.canEmitMarketEvents()) {
+      return null;
+    }
+
     this.stepCount += 1;
 
     const direction = this.stepCount % 2 === 0 ? 1 : -1;
@@ -111,6 +134,25 @@ class DefaultScenarioController implements ScenarioController {
       priceTick: { ...this.priceTick },
       orderbookDelta,
     };
+  }
+
+  simulateDisconnect() {
+    this.streamAvailable = false;
+    this.marketUpdatesPaused = false;
+  }
+
+  reconnect() {
+    this.streamAvailable = true;
+    this.marketUpdatesPaused = false;
+    this.reset();
+  }
+
+  forceStale() {
+    this.marketUpdatesPaused = true;
+  }
+
+  canEmitMarketEvents() {
+    return this.streamAvailable && !this.marketUpdatesPaused;
   }
 }
 

@@ -1,6 +1,9 @@
 import {
   INITIAL_SEQUENCE,
   PRIMARY_SYMBOL,
+  STREAM_HEALTH_CHECK_INTERVAL_MS,
+  STREAM_RECONNECT_DELAY_MS,
+  STREAM_STALE_AFTER_MS,
   STREAM_TICK_INTERVAL_MS,
 } from "@/lib/mock/mock-data";
 import { createScenarioController } from "@/lib/mock/scenario-controller";
@@ -15,17 +18,24 @@ import type {
   RealtimeEventType,
 } from "@/lib/types/realtime";
 import { nextSequence } from "@/lib/utils/sequence";
+import { hasExceededThreshold } from "@/lib/utils/time";
 
 export interface RealtimeEngine {
   start(): void;
   stop(): void;
   isRunning(): boolean;
+  simulateDisconnect(): void;
+  reconnect(): void;
+  forceStale(): void;
 }
 
 type TimerHandle = ReturnType<typeof setInterval>;
+type TimeoutHandle = ReturnType<typeof setTimeout>;
 
 class PulsebookRealtimeEngine implements RealtimeEngine {
-  private intervalId: TimerHandle | null = null;
+  private marketIntervalId: TimerHandle | null = null;
+  private healthIntervalId: TimerHandle | null = null;
+  private reconnectTimeoutId: TimeoutHandle | null = null;
   private running = false;
   private readonly scenario = createScenarioController();
   private currentSequence = INITIAL_SEQUENCE;
@@ -36,27 +46,69 @@ class PulsebookRealtimeEngine implements RealtimeEngine {
     }
 
     this.running = true;
-    this.scenario.reset();
+    this.scenario.start();
     this.currentSequence = useMarketStore.getState().latestStreamSequence ?? INITIAL_SEQUENCE;
 
     this.emitBootstrapEvents();
-
-    this.intervalId = setInterval(() => {
-      this.emitIncrementalEvents();
-    }, STREAM_TICK_INTERVAL_MS);
+    this.startMarketLoop();
+    this.startHealthLoop();
   }
 
   stop() {
-    if (this.intervalId) {
-      clearInterval(this.intervalId);
-      this.intervalId = null;
+    if (!this.running) {
+      return;
     }
 
+    this.clearMarketLoop();
+    this.clearHealthLoop();
+    this.clearReconnectTimeout();
+    this.scenario.stop();
     this.running = false;
+    applyRealtimeEvent(this.createConnectionStateEvent("disconnected"));
   }
 
   isRunning() {
     return this.running;
+  }
+
+  simulateDisconnect() {
+    if (!this.running) {
+      return;
+    }
+
+    this.clearMarketLoop();
+    this.clearReconnectTimeout();
+    this.scenario.simulateDisconnect();
+    applyRealtimeEvent(this.createConnectionStateEvent("disconnected"));
+  }
+
+  reconnect() {
+    if (!this.running || this.reconnectTimeoutId) {
+      return;
+    }
+
+    this.clearMarketLoop();
+    applyRealtimeEvent(this.createConnectionStateEvent("reconnecting"));
+
+    this.reconnectTimeoutId = setTimeout(() => {
+      this.reconnectTimeoutId = null;
+
+      if (!this.running) {
+        return;
+      }
+
+      this.scenario.reconnect();
+      this.emitBootstrapEvents();
+      this.startMarketLoop();
+    }, STREAM_RECONNECT_DELAY_MS);
+  }
+
+  forceStale() {
+    if (!this.running) {
+      return;
+    }
+
+    this.scenario.forceStale();
   }
 
   private emitBootstrapEvents() {
@@ -73,16 +125,86 @@ class PulsebookRealtimeEngine implements RealtimeEngine {
   }
 
   private emitIncrementalEvents() {
-    if (!this.running) {
+    if (!this.running || !this.scenario.canEmitMarketEvents()) {
       return;
     }
 
     const step = this.scenario.nextStep();
+
+    if (!step) {
+      return;
+    }
+
     const priceEvent = this.createPriceTickEvent(step.priceTick);
     const orderbookDeltaEvent = this.createOrderbookDeltaEvent(step.orderbookDelta);
 
     applyRealtimeEvent(priceEvent);
     applyRealtimeEvent(orderbookDeltaEvent);
+  }
+
+  private startMarketLoop() {
+    if (this.marketIntervalId) {
+      return;
+    }
+
+    this.marketIntervalId = setInterval(() => {
+      this.emitIncrementalEvents();
+    }, STREAM_TICK_INTERVAL_MS);
+  }
+
+  private clearMarketLoop() {
+    if (!this.marketIntervalId) {
+      return;
+    }
+
+    clearInterval(this.marketIntervalId);
+    this.marketIntervalId = null;
+  }
+
+  private startHealthLoop() {
+    if (this.healthIntervalId) {
+      return;
+    }
+
+    this.healthIntervalId = setInterval(() => {
+      this.checkForStaleStream();
+    }, STREAM_HEALTH_CHECK_INTERVAL_MS);
+  }
+
+  private clearHealthLoop() {
+    if (!this.healthIntervalId) {
+      return;
+    }
+
+    clearInterval(this.healthIntervalId);
+    this.healthIntervalId = null;
+  }
+
+  private clearReconnectTimeout() {
+    if (!this.reconnectTimeoutId) {
+      return;
+    }
+
+    clearTimeout(this.reconnectTimeoutId);
+    this.reconnectTimeoutId = null;
+  }
+
+  private checkForStaleStream() {
+    if (!this.running) {
+      return;
+    }
+
+    const marketState = useMarketStore.getState();
+
+    if (marketState.connectionStatus !== "connected") {
+      return;
+    }
+
+    if (!hasExceededThreshold(marketState.lastMarketEventTimestamp, Date.now(), STREAM_STALE_AFTER_MS)) {
+      return;
+    }
+
+    applyRealtimeEvent(this.createConnectionStateEvent("stale"));
   }
 
   private createMeta<TType extends RealtimeEventType>(type: TType) {
@@ -97,10 +219,13 @@ class PulsebookRealtimeEngine implements RealtimeEngine {
   }
 
   private createConnectionStateEvent(status: ConnectionStateEvent["payload"]["status"]): ConnectionStateEvent {
+    const marketState = useMarketStore.getState();
+
     return {
       ...this.createMeta("connection.state"),
       payload: {
         status,
+        lastMarketEventTimestamp: marketState.lastMarketEventTimestamp,
       },
     };
   }

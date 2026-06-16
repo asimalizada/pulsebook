@@ -1,11 +1,12 @@
 import type { MarketStoreState } from "@/lib/stores/market-store";
 import type { ConnectionStatus, Instrument, OrderbookSnapshot, PriceTick, TradingSymbol } from "@/lib/types/market";
-import { formatRelativeUpdateTime, formatTimestamp } from "@/lib/utils/time";
+import { formatRelativeUpdateTime, formatTimestamp, getElapsedTimeMs } from "@/lib/utils/time";
 
 export interface ConnectionSummary {
   status: ConnectionStatus;
+  statusLabel: string;
   isStale: boolean;
-  lastMessageTimestamp: number | null;
+  lastMarketEventTimestamp: number | null;
   latestStreamSequence: number | null;
 }
 
@@ -66,16 +67,19 @@ export function selectMidPrice(state: MarketStoreState, symbol: TradingSymbol) {
 }
 
 export function selectConnectionSummary(state: MarketStoreState): ConnectionSummary {
+  const statusLabel = state.connectionStatus.replace(/^\w/, (value) => value.toUpperCase());
+
   return {
     status: state.connectionStatus,
+    statusLabel,
     isStale: state.isStale,
-    lastMessageTimestamp: state.lastMessageTimestamp,
+    lastMarketEventTimestamp: state.lastMarketEventTimestamp,
     latestStreamSequence: state.latestStreamSequence,
   };
 }
 
 export function selectLastUpdateDisplay(state: MarketStoreState, now: number): LastUpdateDisplay {
-  if (state.lastMessageTimestamp === null) {
+  if (state.lastMarketEventTimestamp === null) {
     return {
       absolute: null,
       relative: null,
@@ -83,7 +87,21 @@ export function selectLastUpdateDisplay(state: MarketStoreState, now: number): L
   }
 
   return {
-    absolute: formatTimestamp(state.lastMessageTimestamp),
-    relative: formatRelativeUpdateTime(state.lastMessageTimestamp, now),
+    absolute: formatTimestamp(state.lastMarketEventTimestamp),
+    relative: formatRelativeUpdateTime(state.lastMarketEventTimestamp, now),
+  };
+}
+
+export function selectSequenceSummary(state: MarketStoreState) {
+  return {
+    latestStreamSequence: state.latestStreamSequence,
+  };
+}
+
+export function selectStreamFreshness(state: MarketStoreState, now: number) {
+  return {
+    isStale: state.isStale,
+    lastMarketEventTimestamp: state.lastMarketEventTimestamp,
+    elapsedMs: getElapsedTimeMs(state.lastMarketEventTimestamp, now),
   };
 }

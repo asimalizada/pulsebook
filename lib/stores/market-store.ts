@@ -3,6 +3,7 @@ import { create } from "zustand";
 import {
   INITIAL_CONNECTION_EVENT,
   INITIAL_ORDERBOOK,
+  INITIAL_POSITIONS_EVENT,
   INITIAL_POSITIONS,
   INITIAL_PRICE_TICKS,
   INSTRUMENTS,
@@ -31,7 +32,7 @@ export interface MarketStoreState {
   latestPricesBySymbol: Partial<Record<TradingSymbol, PriceTick>>;
   positions: Position[];
   connectionStatus: ConnectionStatus;
-  lastMessageTimestamp: number | null;
+  lastMarketEventTimestamp: number | null;
   // Pulsebook currently models a single mock stream sequence across all event types.
   latestStreamSequence: number | null;
   isStale: boolean;
@@ -44,7 +45,6 @@ export interface MarketStoreActions {
   applyPositionsSnapshot: (event: PositionsSnapshotEvent) => void;
   updateConnectionState: (event: ConnectionStateEvent) => void;
   updateStreamMeta: (seq: number, ts: number) => void;
-  setStale: (isStale: boolean) => void;
 }
 
 export type MarketStore = MarketStoreState & MarketStoreActions;
@@ -65,7 +65,7 @@ const initialState: MarketStoreState = {
   latestPricesBySymbol: INITIAL_PRICE_TICKS,
   positions: INITIAL_POSITIONS,
   connectionStatus: INITIAL_CONNECTION_EVENT.payload.status,
-  lastMessageTimestamp: INITIAL_CONNECTION_EVENT.ts,
+  lastMarketEventTimestamp: INITIAL_POSITIONS_EVENT.ts,
   latestStreamSequence: INITIAL_CONNECTION_EVENT.seq,
   isStale: false,
 };
@@ -108,8 +108,9 @@ export const useMarketStore = create<MarketStore>()((set) => ({
           ...state.orderbooksBySymbol,
           [event.symbol]: event.payload,
         },
-        lastMessageTimestamp: event.ts,
+        lastMarketEventTimestamp: event.ts,
         latestStreamSequence: event.seq,
+        connectionStatus: state.connectionStatus === "stale" ? "connected" : state.connectionStatus,
         isStale: false,
       };
     }),
@@ -137,8 +138,9 @@ export const useMarketStore = create<MarketStore>()((set) => ({
             asks: mergeOrderbookSide(currentSnapshot.asks, askUpdates, "asc"),
           },
         },
-        lastMessageTimestamp: event.ts,
+        lastMarketEventTimestamp: event.ts,
         latestStreamSequence: event.seq,
+        connectionStatus: state.connectionStatus === "stale" ? "connected" : state.connectionStatus,
         isStale: false,
       };
     }),
@@ -153,8 +155,9 @@ export const useMarketStore = create<MarketStore>()((set) => ({
           ...state.latestPricesBySymbol,
           [event.symbol]: event.payload,
         },
-        lastMessageTimestamp: event.ts,
+        lastMarketEventTimestamp: event.ts,
         latestStreamSequence: event.seq,
+        connectionStatus: state.connectionStatus === "stale" ? "connected" : state.connectionStatus,
         isStale: false,
       };
     }),
@@ -166,8 +169,9 @@ export const useMarketStore = create<MarketStore>()((set) => ({
 
       return {
         positions: event.payload.positions,
-        lastMessageTimestamp: event.ts,
+        lastMarketEventTimestamp: event.ts,
         latestStreamSequence: event.seq,
+        connectionStatus: state.connectionStatus === "stale" ? "connected" : state.connectionStatus,
         isStale: false,
       };
     }),
@@ -179,7 +183,7 @@ export const useMarketStore = create<MarketStore>()((set) => ({
 
       return {
         connectionStatus: event.payload.status,
-        lastMessageTimestamp: event.ts,
+        lastMarketEventTimestamp: event.payload.lastMarketEventTimestamp ?? state.lastMarketEventTimestamp,
         latestStreamSequence: event.seq,
         isStale: event.payload.status === "stale",
       };
@@ -191,13 +195,10 @@ export const useMarketStore = create<MarketStore>()((set) => ({
       }
 
       return {
-        lastMessageTimestamp: ts,
+        lastMarketEventTimestamp: ts,
         latestStreamSequence: seq,
+        connectionStatus: state.connectionStatus === "stale" ? "connected" : state.connectionStatus,
         isStale: false,
       };
-    }),
-  setStale: (isStale) =>
-    set({
-      isStale,
     }),
 }));

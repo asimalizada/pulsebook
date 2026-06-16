@@ -32,3 +32,21 @@ export function formatRelativeUpdateTime(timestamp: number, now: number) {
 
   return `${hours}h ago`;
 }
+
+export function getElapsedTimeMs(timestamp: number | null, now: number) {
+  if (timestamp === null) {
+    return null;
+  }
+
+  return Math.max(0, now - timestamp);
+}
+
+export function hasExceededThreshold(timestamp: number | null, now: number, thresholdMs: number) {
+  const elapsedMs = getElapsedTimeMs(timestamp, now);
+
+  if (elapsedMs === null) {
+    return false;
+  }
+
+  return elapsedMs >= thresholdMs;
+}

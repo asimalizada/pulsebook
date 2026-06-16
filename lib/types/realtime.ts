@@ -49,6 +49,7 @@ export interface ConnectionStateEvent extends RealtimeEventMeta {
   type: "connection.state";
   payload: {
     status: ConnectionStatus;
+    lastMarketEventTimestamp?: number | null;
   };
 }
 
