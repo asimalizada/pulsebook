@@ -1,11 +1,12 @@
 "use client";
 
+import { memo, useMemo } from "react";
 import { BarChart3 } from "lucide-react";
 
 import { Panel } from "@/components/shared/panel";
 import { useMarketStore } from "@/lib/stores/market-store";
 import { useUiStore } from "@/lib/stores/ui-store";
-import { selectMidPrice, selectOrderbookBySymbol, selectSpread } from "@/lib/selectors/market-selectors";
+import { selectOrderbookBySymbol } from "@/lib/selectors/market-selectors";
 import { formatPrice, formatSize } from "@/lib/utils/format";
 
 interface OrderbookRow {
@@ -18,6 +19,44 @@ interface OrderbookRow {
   bidBarWidth: string;
   askBarWidth: string;
   key: string;
+}
+
+const ORDERBOOK_GRID_COLUMNS =
+  "minmax(72px,0.78fr) minmax(132px,1.12fr) minmax(88px,0.86fr) minmax(132px,1.12fr) minmax(72px,0.78fr) minmax(88px,0.86fr)";
+
+const OrderbookTableRow = memo(function OrderbookTableRow({ row }: { row: OrderbookRow }) {
+  return (
+    <div
+      className="pulsebook-table-row grid gap-2 rounded-[10px] border border-transparent px-3 py-2 text-[0.83rem] transition-colors duration-200 hover:border-white/8 hover:bg-white/[0.03]"
+      style={{ gridTemplateColumns: ORDERBOOK_GRID_COLUMNS }}
+    >
+      <div className="pulsebook-depth-bid" style={{ width: `calc(${row.bidBarWidth} / 2.1)` }} />
+      <div className="pulsebook-depth-ask" style={{ width: `calc(${row.askBarWidth} / 2.1)` }} />
+      <div className="pulsebook-mono relative z-10 text-left text-emerald-200/90">{row.bidSize}</div>
+      <div className="pulsebook-mono relative z-10 text-left font-medium text-emerald-300">{row.bidPrice}</div>
+      <div className="pulsebook-mono relative z-10 text-left text-emerald-100/70">{row.bidTotal}</div>
+      <div className="pulsebook-mono relative z-10 text-right font-medium text-rose-300">{row.askPrice}</div>
+      <div className="pulsebook-mono relative z-10 text-right text-rose-200/90">{row.askSize}</div>
+      <div className="pulsebook-mono relative z-10 text-right text-rose-100/70">{row.askTotal}</div>
+    </div>
+  );
+});
+
+function getOrderbookSummary(snapshot?: { bids: { price: number }[]; asks: { price: number }[] }) {
+  const bestBid = snapshot?.bids[0]?.price;
+  const bestAsk = snapshot?.asks[0]?.price;
+
+  if (bestBid === undefined || bestAsk === undefined) {
+    return {
+      spread: null,
+      midPrice: null,
+    };
+  }
+
+  return {
+    spread: bestAsk - bestBid,
+    midPrice: (bestBid + bestAsk) / 2,
+  };
 }
 
 function buildOrderbookRows(
@@ -58,11 +97,10 @@ function buildOrderbookRows(
 export function OrderbookPanel() {
   const selectedSymbol = useUiStore((state) => state.selectedSymbol);
   const snapshot = useMarketStore((state) => selectOrderbookBySymbol(state, selectedSymbol));
-  const spread = useMarketStore((state) => selectSpread(state, selectedSymbol));
-  const midPrice = useMarketStore((state) => selectMidPrice(state, selectedSymbol));
-  const orderbookGridColumns = "minmax(72px,0.78fr) minmax(132px,1.12fr) minmax(88px,0.86fr) minmax(132px,1.12fr) minmax(72px,0.78fr) minmax(88px,0.86fr)";
-
-  const rows = snapshot ? buildOrderbookRows(snapshot.bids, snapshot.asks) : [];
+  const rows = useMemo(() => {
+    return snapshot ? buildOrderbookRows(snapshot.bids, snapshot.asks) : [];
+  }, [snapshot]);
+  const { spread, midPrice } = useMemo(() => getOrderbookSummary(snapshot), [snapshot]);
 
   return (
     <Panel roundedClassName="rounded-[12px]" variant="terminal" className="relative p-4 xl:p-5">
@@ -93,7 +131,7 @@ export function OrderbookPanel() {
 
           <div
             className="grid gap-2 border-b border-[var(--border)] pb-2 text-[0.64rem] uppercase tracking-[0.16em] text-[var(--muted)]"
-            style={{ gridTemplateColumns: orderbookGridColumns }}
+            style={{ gridTemplateColumns: ORDERBOOK_GRID_COLUMNS }}
           >
             <div className="text-left">Size</div>
             <div className="text-left">Bid</div>
@@ -105,20 +143,7 @@ export function OrderbookPanel() {
 
           <div className="mt-2 space-y-1.5">
             {rows.map((row) => (
-              <div
-                key={row.key}
-                className="pulsebook-table-row grid gap-2 rounded-[10px] border border-transparent px-3 py-2 text-[0.83rem] transition-colors duration-200 hover:border-white/8 hover:bg-white/[0.03]"
-                style={{ gridTemplateColumns: orderbookGridColumns }}
-              >
-                <div className="pulsebook-depth-bid" style={{ width: `calc(${row.bidBarWidth} / 2.1)` }} />
-                <div className="pulsebook-depth-ask" style={{ width: `calc(${row.askBarWidth} / 2.1)` }} />
-                <div className="pulsebook-mono relative z-10 text-left text-emerald-200/90">{row.bidSize}</div>
-                <div className="pulsebook-mono relative z-10 text-left font-medium text-emerald-300">{row.bidPrice}</div>
-                <div className="pulsebook-mono relative z-10 text-left text-emerald-100/70">{row.bidTotal}</div>
-                <div className="pulsebook-mono relative z-10 text-right font-medium text-rose-300">{row.askPrice}</div>
-                <div className="pulsebook-mono relative z-10 text-right text-rose-200/90">{row.askSize}</div>
-                <div className="pulsebook-mono relative z-10 text-right text-rose-100/70">{row.askTotal}</div>
-              </div>
+              <OrderbookTableRow key={row.key} row={row} />
             ))}
           </div>
 

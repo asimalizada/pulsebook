@@ -1,34 +1,90 @@
 "use client";
 
-import { useMemo } from "react";
+import { memo, useMemo } from "react";
 import { BriefcaseBusiness } from "lucide-react";
 
 import { Panel } from "@/components/shared/panel";
 import { useMarketStore } from "@/lib/stores/market-store";
 import {
-  getPositionExposure,
   getPositionMarkPrice,
   getPositionUnrealizedPnl,
 } from "@/lib/selectors/position-selectors";
 import { formatPnl, formatPrice, formatSize } from "@/lib/utils/format";
 
+const POSITION_GRID_COLUMNS =
+  "minmax(112px,1.1fr) minmax(92px,0.7fr) minmax(76px,0.8fr) minmax(116px,0.9fr) minmax(116px,0.9fr) minmax(172px,1.14fr)";
+
+interface PositionRowView {
+  id: string;
+  symbol: string;
+  side: "long" | "short";
+  quantityDisplay: string;
+  entryPriceDisplay: string;
+  markPriceDisplay: string;
+  unrealizedPnlDisplay: string;
+  isPositivePnl: boolean;
+}
+
+const PositionTableRow = memo(function PositionTableRow({
+  row,
+  isFirstRow,
+}: {
+  row: PositionRowView;
+  isFirstRow: boolean;
+}) {
+  return (
+    <div
+      className={`grid gap-2 px-0 py-4 pr-2 text-[0.82rem] transition-colors duration-200 hover:bg-white/[0.02] ${
+        isFirstRow ? "" : "border-t border-white/7"
+      }`}
+      style={{ gridTemplateColumns: POSITION_GRID_COLUMNS }}
+    >
+      <div className="pulsebook-mono whitespace-nowrap text-white">{row.symbol}</div>
+      <div className="pt-[1px]">
+        <span
+          className={`inline-flex whitespace-nowrap rounded-full border px-2 py-[3px] text-[0.62rem] font-medium uppercase tracking-[0.14em] ${
+            row.side === "long"
+              ? "border-emerald-400/25 bg-emerald-400/10 text-emerald-200"
+              : "border-rose-400/25 bg-rose-400/10 text-rose-200"
+          }`}
+        >
+          {row.side === "long" ? "Long" : "Short"}
+        </span>
+      </div>
+      <div className="pulsebook-mono whitespace-nowrap text-right text-white">{row.quantityDisplay}</div>
+      <div className="pulsebook-mono whitespace-nowrap text-right text-slate-300">{row.entryPriceDisplay}</div>
+      <div className="pulsebook-mono whitespace-nowrap text-right text-sky-200">{row.markPriceDisplay}</div>
+      <div
+        className={`pulsebook-mono whitespace-nowrap text-right ${
+          row.isPositivePnl ? "font-semibold text-emerald-300" : "font-semibold text-rose-300"
+        }`}
+      >
+        {row.unrealizedPnlDisplay}
+      </div>
+    </div>
+  );
+});
+
 export function PositionsTable() {
   const positions = useMarketStore((state) => state.positions);
   const latestPricesBySymbol = useMarketStore((state) => state.latestPricesBySymbol);
-  const gridColumns = "minmax(112px,1.1fr) minmax(92px,0.7fr) minmax(76px,0.8fr) minmax(116px,0.9fr) minmax(116px,0.9fr) minmax(172px,1.14fr)";
 
   const positionRows = useMemo(
     () =>
       positions.map((position) => {
         const markPrice = getPositionMarkPrice(position, latestPricesBySymbol[position.symbol]);
         const unrealizedPnl = getPositionUnrealizedPnl(position, markPrice);
-        const exposure = getPositionExposure(position, markPrice);
+        const isPositivePnl = (unrealizedPnl ?? 0) >= 0;
 
         return {
-          ...position,
-          markPrice,
-          unrealizedPnl,
-          exposure,
+          id: position.id,
+          symbol: position.symbol,
+          side: position.side,
+          quantityDisplay: formatSize(position.quantity, 3),
+          entryPriceDisplay: formatPrice(position.entryPrice),
+          markPriceDisplay: markPrice === null ? "--" : formatPrice(markPrice),
+          unrealizedPnlDisplay: unrealizedPnl === null ? "--" : formatPnl(unrealizedPnl),
+          isPositivePnl,
         };
       }),
     [positions, latestPricesBySymbol],
@@ -52,7 +108,7 @@ export function PositionsTable() {
         <div className="min-w-[724px] pr-5">
           <div
             className="sticky top-0 z-10 grid gap-2 border-b border-[var(--border)] bg-[linear-gradient(180deg,rgba(8,17,31,0.98)_0%,rgba(5,11,22,0.98)_100%)] pb-2 pr-2 text-[0.61rem] uppercase tracking-[0.16em] text-[var(--muted)]"
-            style={{ gridTemplateColumns: gridColumns }}
+            style={{ gridTemplateColumns: POSITION_GRID_COLUMNS }}
           >
             <div className="whitespace-nowrap">Symbol</div>
             <div className="whitespace-nowrap">Side</div>
@@ -64,38 +120,7 @@ export function PositionsTable() {
 
           <div className="mt-1">
             {positionRows.map((position, index) => (
-              <div
-                key={position.id}
-                className={`grid gap-2 px-0 py-4 pr-2 text-[0.82rem] transition-colors duration-200 hover:bg-white/[0.02] ${
-                  index === 0 ? "" : "border-t border-white/7"
-                }`}
-                style={{ gridTemplateColumns: gridColumns }}
-              >
-                <div className="pulsebook-mono whitespace-nowrap text-white">{position.symbol}</div>
-                <div className="pt-[1px]">
-                  <span
-                    className={`inline-flex whitespace-nowrap rounded-full border px-2 py-[3px] text-[0.62rem] font-medium uppercase tracking-[0.14em] ${
-                      position.side === "long"
-                        ? "border-emerald-400/25 bg-emerald-400/10 text-emerald-200"
-                        : "border-rose-400/25 bg-rose-400/10 text-rose-200"
-                    }`}
-                  >
-                    {position.side === "long" ? "Long" : "Short"}
-                  </span>
-                </div>
-                <div className="pulsebook-mono whitespace-nowrap text-right text-white">{formatSize(position.quantity, 3)}</div>
-                <div className="pulsebook-mono whitespace-nowrap text-right text-slate-300">{formatPrice(position.entryPrice)}</div>
-                <div className="pulsebook-mono whitespace-nowrap text-right text-sky-200">
-                  {position.markPrice === null ? "--" : formatPrice(position.markPrice)}
-                </div>
-                <div
-                  className={`pulsebook-mono whitespace-nowrap text-right ${
-                    (position.unrealizedPnl ?? 0) >= 0 ? "font-semibold text-emerald-300" : "font-semibold text-rose-300"
-                  }`}
-                >
-                  {position.unrealizedPnl === null ? "--" : formatPnl(position.unrealizedPnl)}
-                </div>
-              </div>
+              <PositionTableRow key={position.id} row={position} isFirstRow={index === 0} />
             ))}
           </div>
         </div>

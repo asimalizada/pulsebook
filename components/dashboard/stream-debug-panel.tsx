@@ -1,7 +1,9 @@
 "use client";
 
+import { memo, useCallback, useMemo } from "react";
 import type { LucideIcon } from "lucide-react";
 import { AlertTriangle, Clock3, Layers3, RefreshCw, ShieldCheck, TimerReset, WifiOff, Zap } from "lucide-react";
+import { useShallow } from "zustand/react/shallow";
 
 import { Panel } from "@/components/shared/panel";
 import {
@@ -12,7 +14,15 @@ import { useLiveNow } from "@/lib/utils/use-live-now";
 import { useMarketStore } from "@/lib/stores/market-store";
 import { StatusPill } from "@/components/shared/status-pill";
 
-function StreamButton({ label, onClick, icon: Icon }: { label: string; onClick: () => void; icon: LucideIcon }) {
+const StreamButton = memo(function StreamButton({
+  label,
+  onClick,
+  icon: Icon,
+}: {
+  label: string;
+  onClick: () => void;
+  icon: LucideIcon;
+}) {
   const toneClassName =
     label === "Disconnect"
       ? "border-rose-500/38 bg-rose-500/[0.06] text-rose-300 hover:border-rose-400/52 hover:bg-rose-500/[0.1]"
@@ -30,19 +40,47 @@ function StreamButton({ label, onClick, icon: Icon }: { label: string; onClick: 
       {label}
     </button>
   );
-}
+});
 
 export function StreamDebugPanel() {
-  const connectionStatus = useMarketStore((state) => state.connectionStatus);
-  const latestStreamSequence = useMarketStore((state) => state.latestStreamSequence);
-  const isStale = useMarketStore((state) => state.isStale);
-  const lastMarketEventTimestamp = useMarketStore((state) => state.lastMarketEventTimestamp);
+  const [connectionStatus, latestStreamSequence, isStale, lastMarketEventTimestamp] = useMarketStore(
+    useShallow((state) => [
+      state.connectionStatus,
+      state.latestStreamSequence,
+      state.isStale,
+      state.lastMarketEventTimestamp,
+    ]),
+  );
   const now = useLiveNow(500);
-  const statusLabel = connectionStatus.replace(/^\w/, (value) => value.toUpperCase());
-  const elapsedMs = now === null ? null : getElapsedTimeMs(lastMarketEventTimestamp, now);
-  const lastUpdateAbsolute = lastMarketEventTimestamp === null ? "--" : formatTimestamp(lastMarketEventTimestamp);
-  const statusTone = connectionStatus === "connected" ? "positive" : connectionStatus === "reconnecting" ? "warning" : connectionStatus === "stale" ? "warning" : "danger";
+  const engine = useMemo(() => getPulsebookRealtimeEngine(), []);
+  const statusLabel = useMemo(() => {
+    return connectionStatus.replace(/^\w/, (value) => value.toUpperCase());
+  }, [connectionStatus]);
+  const elapsedMs = useMemo(() => {
+    return now === null ? null : getElapsedTimeMs(lastMarketEventTimestamp, now);
+  }, [lastMarketEventTimestamp, now]);
+  const lastUpdateAbsolute = useMemo(() => {
+    return lastMarketEventTimestamp === null ? "--" : formatTimestamp(lastMarketEventTimestamp);
+  }, [lastMarketEventTimestamp]);
+  const statusTone = useMemo(() => {
+    return connectionStatus === "connected"
+      ? "positive"
+      : connectionStatus === "reconnecting"
+        ? "warning"
+        : connectionStatus === "stale"
+          ? "warning"
+          : "danger";
+  }, [connectionStatus]);
   const staleLabel = isStale ? "On" : "Off";
+  const handleDisconnect = useCallback(() => {
+    engine.simulateDisconnect();
+  }, [engine]);
+  const handleReconnect = useCallback(() => {
+    engine.reconnect();
+  }, [engine]);
+  const handleForceStale = useCallback(() => {
+    engine.forceStale();
+  }, [engine]);
 
   return (
     <Panel roundedClassName="rounded-[10px]" variant="subtle" className="p-4 before:hidden">
@@ -102,9 +140,9 @@ export function StreamDebugPanel() {
 
       <div className="mt-4 border-t border-white/6 pt-4">
         <div className="grid gap-3 min-[420px]:grid-cols-2 xl:grid-cols-3">
-        <StreamButton label="Disconnect" icon={WifiOff} onClick={() => getPulsebookRealtimeEngine().simulateDisconnect()} />
-        <StreamButton label="Reconnect" icon={RefreshCw} onClick={() => getPulsebookRealtimeEngine().reconnect()} />
-        <StreamButton label="Force Stale" icon={AlertTriangle} onClick={() => getPulsebookRealtimeEngine().forceStale()} />
+          <StreamButton label="Disconnect" icon={WifiOff} onClick={handleDisconnect} />
+          <StreamButton label="Reconnect" icon={RefreshCw} onClick={handleReconnect} />
+          <StreamButton label="Force Stale" icon={AlertTriangle} onClick={handleForceStale} />
         </div>
       </div>
     </Panel>

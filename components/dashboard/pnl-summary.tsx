@@ -1,6 +1,8 @@
 "use client";
 
+import { useMemo } from "react";
 import { Activity, ArrowLeftRight, CircleGauge, TrendingDown, TrendingUp } from "lucide-react";
+import { useShallow } from "zustand/react/shallow";
 
 import { MetricCard } from "@/components/shared/metric-card";
 import { formatCurrency, formatPnl, formatPrice } from "@/lib/utils/format";
@@ -55,22 +57,39 @@ function BarDecoration({ tone = "neutral" }: { tone?: "neutral" | "negative" }) 
 
 export function PnlSummary() {
   const selectedSymbol = useUiStore((state) => state.selectedSymbol);
-  const totalPnl = useMarketStore(selectTotalUnrealizedPnl);
-  const totalExposure = useMarketStore(selectTotalExposure);
-  const spread = useMarketStore((state) => selectSpread(state, selectedSymbol));
-  const priceTick = useMarketStore((state) => selectPriceTickBySymbol(state, selectedSymbol));
+  const [totalPnl, totalExposure, lastPrice, change24h, spread] = useMarketStore(
+    useShallow((state) => {
+      const priceTick = selectPriceTickBySymbol(state, selectedSymbol);
+
+      return [
+        selectTotalUnrealizedPnl(state),
+        selectTotalExposure(state),
+        priceTick?.price ?? null,
+        priceTick?.change24h ?? null,
+        selectSpread(state, selectedSymbol),
+      ];
+    }),
+  );
+  const totalPnlPositive = totalPnl >= 0;
+  const change24hDisplay = useMemo(() => {
+    if (change24h === null) {
+      return null;
+    }
+
+    return `${change24h >= 0 ? "+" : ""}${change24h.toFixed(2)}%`;
+  }, [change24h]);
 
   return (
     <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
       <MetricCard
         label="Total PnL"
         value={formatPnl(totalPnl)}
-        toneClassName={totalPnl >= 0 ? "pulsebook-positive-glow text-emerald-300" : "pulsebook-negative-glow text-rose-300"}
-        accentClassName={totalPnl >= 0 ? "from-emerald-500/10 via-white/[0.015] to-transparent" : "from-rose-500/10 via-white/[0.015] to-transparent"}
-        icon={totalPnl >= 0 ? TrendingUp : TrendingDown}
-        iconToneClassName={totalPnl >= 0 ? "text-emerald-200" : "text-rose-200"}
-        iconShellClassName={totalPnl >= 0 ? "border-emerald-400/18 bg-emerald-400/[0.08]" : "border-rose-400/18 bg-rose-400/[0.08]"}
-        decoration={<LineDecoration tone={totalPnl >= 0 ? "positive" : "negative"} />}
+        toneClassName={totalPnlPositive ? "pulsebook-positive-glow text-emerald-300" : "pulsebook-negative-glow text-rose-300"}
+        accentClassName={totalPnlPositive ? "from-emerald-500/10 via-white/[0.015] to-transparent" : "from-rose-500/10 via-white/[0.015] to-transparent"}
+        icon={totalPnlPositive ? TrendingUp : TrendingDown}
+        iconToneClassName={totalPnlPositive ? "text-emerald-200" : "text-rose-200"}
+        iconShellClassName={totalPnlPositive ? "border-emerald-400/18 bg-emerald-400/[0.08]" : "border-rose-400/18 bg-rose-400/[0.08]"}
+        decoration={<LineDecoration tone={totalPnlPositive ? "positive" : "negative"} />}
       />
       <MetricCard
         label="Exposure"
@@ -83,10 +102,10 @@ export function PnlSummary() {
       />
       <MetricCard
         label="Last Price"
-        value={priceTick ? formatPrice(priceTick.price) : "--"}
+        value={lastPrice === null ? "--" : formatPrice(lastPrice)}
         toneClassName="text-sky-200"
         accentClassName="from-sky-500/[0.08] via-white/[0.015] to-transparent"
-        meta={priceTick ? `${priceTick.change24h >= 0 ? "+" : ""}${priceTick.change24h.toFixed(2)}%` : null}
+        meta={change24hDisplay}
         icon={Activity}
         iconToneClassName="text-sky-200"
         iconShellClassName="border-sky-400/18 bg-sky-400/[0.07]"

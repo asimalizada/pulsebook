@@ -1,6 +1,8 @@
 "use client";
 
+import { useMemo } from "react";
 import { Activity, Radio } from "lucide-react";
+import { useShallow } from "zustand/react/shallow";
 
 import { Panel } from "@/components/shared/panel";
 import { formatRelativeUpdateTime, formatTimestamp } from "@/lib/utils/time";
@@ -19,14 +21,19 @@ function HeaderFact({ label, value }: { label: string; value: string }) {
 
 export function DashboardHeader() {
   const selectedSymbol = useUiStore((state) => state.selectedSymbol);
-  const connectionStatus = useMarketStore((state) => state.connectionStatus);
-  const latestStreamSequence = useMarketStore((state) => state.latestStreamSequence);
-  const lastMarketEventTimestamp = useMarketStore((state) => state.lastMarketEventTimestamp);
+  const [connectionStatus, latestStreamSequence, lastMarketEventTimestamp] = useMarketStore(
+    useShallow((state) => [state.connectionStatus, state.latestStreamSequence, state.lastMarketEventTimestamp]),
+  );
   const now = useLiveNow(1000);
-  const lastUpdateAbsolute = lastMarketEventTimestamp === null ? "--" : formatTimestamp(lastMarketEventTimestamp);
-  const lastUpdateRelative =
-    now === null || lastMarketEventTimestamp === null ? "--" : formatRelativeUpdateTime(lastMarketEventTimestamp, now);
-  const statusLabel = connectionStatus.replace(/^\w/, (value) => value.toUpperCase());
+  const lastUpdateAbsolute = useMemo(() => {
+    return lastMarketEventTimestamp === null ? "--" : formatTimestamp(lastMarketEventTimestamp);
+  }, [lastMarketEventTimestamp]);
+  const lastUpdateRelative = useMemo(() => {
+    return now === null || lastMarketEventTimestamp === null ? "--" : formatRelativeUpdateTime(lastMarketEventTimestamp, now);
+  }, [lastMarketEventTimestamp, now]);
+  const statusLabel = useMemo(() => {
+    return connectionStatus.replace(/^\w/, (value) => value.toUpperCase());
+  }, [connectionStatus]);
 
   return (
     <Panel variant="command" roundedClassName="rounded-[12px]" className="px-4 py-3 before:hidden md:px-5">
