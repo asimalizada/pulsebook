@@ -81,7 +81,6 @@ export const INITIAL_POSITIONS: Position[] = [
     side: "long",
     quantity: 1.8,
     entryPrice: 66920.5,
-    markPrice: 67482.1,
   },
   {
     id: "pos-eth-long",
@@ -89,7 +88,6 @@ export const INITIAL_POSITIONS: Position[] = [
     side: "long",
     quantity: 12,
     entryPrice: 3540.2,
-    markPrice: 3586.4,
   },
   {
     id: "pos-sol-short",
@@ -97,7 +95,6 @@ export const INITIAL_POSITIONS: Position[] = [
     side: "short",
     quantity: 420,
     entryPrice: 168.1,
-    markPrice: 165.9,
   },
 ];
 

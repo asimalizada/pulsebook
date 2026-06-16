@@ -8,5 +8,4 @@ export interface Position {
   side: PositionSide;
   quantity: number;
   entryPrice: number;
-  markPrice: number;
 }
